@@ -1,27 +1,38 @@
 package main
 
 import (
-    "log"
+	"log"
 
-    "github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin"
+
+	"autorecon-backend/internal/config"
+	"autorecon-backend/internal/repository"
 )
 
 func main() {
-    log.Println("Starting AutoRecon API Server...")
+	log.Println("Starting AutoRecon API Server...")
 
-    r := gin.Default()
+	// 1. Tải và Validate Cấu hình
+	appConfig := config.LoadConfig()
 
-    // Health check endpoint
-    r.GET("/api/v1/health", func(c *gin.Context) {
-        c.JSON(200, gin.H{
-            "status": "UP",
-            "message": "AutoRecon Backend is running",
-        })
-    })
+	// 2. Khởi tạo Cơ sở dữ liệu và tự động chạy Schema Triggers
+	repository.InitDB(appConfig.Database)
 
-    // Placeholder for other routes: Auth, Orders, Transactions, Reconciliation
+	// 3. Khởi tạo Router Gin
+	r := gin.Default()
 
-    if err := r.Run(":8080"); err != nil {
-        log.Fatalf("Failed to start server: %v", err)
-    }
+	// Health check endpoint
+	r.GET("/api/v1/health", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"status":  "UP",
+			"message": "AutoRecon Backend is running",
+		})
+	})
+
+	// Placeholder for other routes...
+
+	// Start server on the configured port
+	if err := r.Run(":" + appConfig.Server.Port); err != nil {
+		log.Fatalf("Failed to start server: %v", err)
+	}
 }
