@@ -1,0 +1,388 @@
+{
+	"info": {
+		"_postman_id": "c1a2b3c4-d5e6-f7g8-h9i0-j1k2l3m4n5o6",
+		"name": "AutoRecon System API",
+		"description": "Postman collection for AutoRecon Backend API testing, with automated token management scripts.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Public",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/health",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"health"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Login & Get Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"var jsonData = pm.response.json();",
+									"",
+									"pm.test(\"Extract and set tokens\", function () {",
+									"    if (jsonData.status === \"success\" && jsonData.data) {",
+									"        if (jsonData.data.access_token) {",
+									"            pm.collectionVariables.set(\"token\", jsonData.data.access_token);",
+									"            console.log(\"Access token captured.\");",
+									"        }",
+									"        if (jsonData.data.refresh_token) {",
+									"            pm.collectionVariables.set(\"refresh_token\", jsonData.data.refresh_token);",
+									"            console.log(\"Refresh token captured.\");",
+									"        }",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"admin@root.com\",\n    \"password\": \"Auto5c@Start123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "User Profile",
+			"item": [
+				{
+					"name": "Change Password (Required First Login)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"old_password\": \"Auto5c@Start123\",\n    \"new_password\": \"NewSecretPass@999\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/users/me/password",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"users",
+								"me",
+								"password"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Auth - Refresh & Logout",
+			"item": [
+				{
+					"name": "Refresh Access Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.status === 'success' && jsonData.data) {",
+									"    if (jsonData.data.access_token) {",
+									"        pm.collectionVariables.set('token', jsonData.data.access_token);",
+									"        console.log('New access token captured.');",
+									"    }",
+									"    if (jsonData.data.refresh_token) {",
+									"        pm.collectionVariables.set('refresh_token', jsonData.data.refresh_token);",
+									"        console.log('Refresh token rotated.');",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"refresh_token\": \"{{refresh_token}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/refresh",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "auth", "refresh"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Logout",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    pm.collectionVariables.set('token', '');",
+									"    pm.collectionVariables.set('refresh_token', '');",
+									"    console.log('Tokens cleared from collection variables.');",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [{"key": "token", "value": "{{token}}", "type": "string"}]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"refresh_token\": \"{{refresh_token}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/logout",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "auth", "logout"]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Admin Management",
+			"item": [
+				{
+					"name": "Provision New User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.data && jsonData.data.user_id) {",
+									"    pm.collectionVariables.set(\"last_created_user_id\", jsonData.data.user_id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"full_name\": \"Nguyễn Văn Sale\",\n    \"email\": \"sale1@company.com\",\n    \"role_id\": 2\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/admin/users",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"admin",
+								"users"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "List Users",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/admin/users?role=&status=",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"admin",
+								"users"
+							],
+							"query": [
+								{
+									"key": "role",
+									"value": "",
+									"description": "Example: Sale"
+								},
+								{
+									"key": "status",
+									"value": "",
+									"description": "Example: INACTIVE or ACTIVE"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update User Status",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"status\": \"INACTIVE\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/admin/users/{{last_created_user_id}}/status",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"admin",
+								"users",
+								"{{last_created_user_id}}",
+								"status"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8080",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "refresh_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "last_created_user_id",
+			"value": "",
+			"type": "string"
+		}
+	]
+}

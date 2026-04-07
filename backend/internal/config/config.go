@@ -9,6 +9,7 @@ import (
 
 type AppConfig struct {
 	Database DatabaseConfig `mapstructure:",squash"`
+	Redis    RedisConfig    `mapstructure:",squash"`
 	Server   ServerConfig   `mapstructure:",squash"`
 }
 
@@ -20,9 +21,21 @@ type DatabaseConfig struct {
 	Name     string `mapstructure:"DB_NAME" validate:"required"`
 }
 
+type RedisConfig struct {
+	Host     string `mapstructure:"REDIS_HOST" validate:"required"`
+	Port     string `mapstructure:"REDIS_PORT" validate:"required,numeric"`
+	Password string `mapstructure:"REDIS_PASSWORD"`
+	DB       int    `mapstructure:"REDIS_DB"`
+}
+
 type ServerConfig struct {
-	Port      string `mapstructure:"PORT" validate:"required,numeric"`
-	JWTSecret string `mapstructure:"JWT_SECRET" validate:"required"`
+	Port                 string `mapstructure:"PORT" validate:"required,numeric"`
+	JWTPrivateKeyPath    string `mapstructure:"JWT_PRIVATE_KEY_PATH" validate:"required"`
+	JWTPublicKeyPath     string `mapstructure:"JWT_PUBLIC_KEY_PATH" validate:"required"`
+	AdminDefaultEmail    string `mapstructure:"ADMIN_DEFAULT_EMAIL" validate:"required"`
+	AdminDefaultPassword string `mapstructure:"ADMIN_DEFAULT_PASSWORD" validate:"required"`
+	AccessTokenTTL       string `mapstructure:"ACCESS_TOKEN_TTL" validate:"required"`
+	RefreshTokenTTL      string `mapstructure:"REFRESH_TOKEN_TTL" validate:"required"`
 }
 
 func LoadConfig() *AppConfig {

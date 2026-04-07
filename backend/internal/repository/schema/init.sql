@@ -19,8 +19,11 @@ INSERT INTO roles (id, role_name) VALUES (1, 'Admin'), (2, 'Sale'), (3, 'Account
 -- 2. Table USERS
 CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    full_name VARCHAR(255) NOT NULL DEFAULT '',
     email VARCHAR(255) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
+    requires_password_change BOOLEAN DEFAULT FALSE,
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE', -- ACTIVE | INACTIVE
     role_id INT REFERENCES roles(id) ON DELETE RESTRICT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -77,3 +80,5 @@ CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
 CREATE INDEX IF NOT EXISTS idx_bank_transactions_status ON bank_transactions(status);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_order_id ON audit_logs(order_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_bank_txn_id ON audit_logs(bank_txn_id);
+CREATE INDEX IF NOT EXISTS idx_users_status ON users(status);
+CREATE INDEX IF NOT EXISTS idx_users_role_id ON users(role_id);

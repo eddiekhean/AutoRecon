@@ -5,4 +5,8 @@ To create in one go, run: create-vite <DIRECTORY> --no-interactive --template <T
 ◆  Install with npm and start now?
 │  ● Yes / ○ No
 └
-[999D[4A[2B[2K[G│  ○ Yes / ● No[2B
+[999D[4A[2B[2K[G│  ○ Yes / ● No[2Bnpm notice
+npm notice New minor version of npm available! 11.6.2 -> 11.12.1
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.12.1
+npm notice To update run: npm install -g npm@11.12.1
+npm notice

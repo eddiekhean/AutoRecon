@@ -22,9 +22,14 @@ dist-ssr/
 *.sln
 *.sw?
 
-# Environment
+# Environment — ignore all .env files, keep .env.example as template
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*
+!.env.example
+!**/.env.example
+backend/.env
+backend/.env.*
+!backend/.env.example
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
