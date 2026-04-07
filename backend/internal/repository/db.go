@@ -20,8 +20,12 @@ var DB *gorm.DB
 // InitDB now accepts the validated AppConfig struct.
 func InitDB(appCfg *config.AppConfig) {
 	cfg := appCfg.Database
-	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=Asia/Ho_Chi_Minh",
-		cfg.Host, cfg.User, cfg.Password, cfg.Name, cfg.Port,
+	sslMode := cfg.SSLMode
+	if sslMode == "" {
+		sslMode = "disable" // local-dev fallback; set DB_SSL_MODE=require in production
+	}
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s TimeZone=Asia/Ho_Chi_Minh",
+		cfg.Host, cfg.User, cfg.Password, cfg.Name, cfg.Port, sslMode,
 	)
 
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})

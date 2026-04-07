@@ -172,6 +172,13 @@ func ListUsers(c *gin.Context) {
 func UpdateUserStatus(c *gin.Context) {
 	targetUserID := c.Param("id")
 
+	// Prevent an admin from deactivating their own account
+	callerID, _ := c.Get("user_id")
+	if callerIDStr, ok := callerID.(string); ok && callerIDStr == targetUserID {
+		utils.BadRequest(c, "You cannot change your own account status")
+		return
+	}
+
 	var req UpdateUserStatusRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.BadRequest(c, "Invalid request: "+err.Error())

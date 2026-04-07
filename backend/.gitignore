@@ -1,0 +1,12 @@
+# Secrets — NEVER commit these
+.env
+keys/
+
+# Build artifacts
+server
+main
+*.exe
+*.out
+
+# Go toolchain
+vendor/

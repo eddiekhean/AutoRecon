@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"time"
+
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
@@ -16,6 +18,12 @@ type LoginRequest struct {
 
 type RefreshRequest struct {
 	RefreshToken string `json:"refresh_token" binding:"required"`
+}
+
+// LogoutRequest has an optional refresh_token.
+// The access token JTI is always blacklisted; the refresh token is deleted only when provided.
+type LogoutRequest struct {
+	RefreshToken string `json:"refresh_token"`
 }
 
 // Login authenticates a user and returns both an access token and a refresh token.
@@ -42,12 +50,11 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	// When password change is forced, use a very short-lived access token.
+	// When password change is forced, cap the access token to 15 minutes.
 	// Refresh token is NOT issued in this case to prevent bypassing the reset flow.
 	accessTTL := utils.AccessTokenTTL
 	if user.RequiresPasswordChange {
-		accessTTL = utils.RefreshTokenTTL // cap to a really short window
-		accessTTL = 15 * 60 * 1000000000 // 15 minutes in nanoseconds
+		accessTTL = 15 * time.Minute
 	}
 
 	accessToken, jti, err := utils.GenerateToken(user.ID, user.RoleID, user.RequiresPasswordChange, accessTTL)
@@ -140,25 +147,31 @@ func RefreshToken(c *gin.Context) {
 	})
 }
 
-// Logout invalidates the current access token and its refresh token.
+// Logout invalidates the current access token and, if provided, its refresh token.
+// The refresh_token field is optional — the access token JTI is always blacklisted.
 // POST /api/v1/auth/logout
 func Logout(c *gin.Context) {
-	var req RefreshRequest
+	var req LogoutRequest
+	// ShouldBindJSON only fails on malformed JSON, not on missing fields
 	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.BadRequest(c, "Provide your refresh_token to logout properly")
+		utils.BadRequest(c, "Invalid request body: "+err.Error())
 		return
 	}
 
-	// Delete the refresh token
-	if err := repository.DeleteRefreshToken(req.RefreshToken); err != nil {
-		c.Error(err)
+	// Always delete the current access token session (whitelist model: removing the key revokes it)
+	userID, _ := c.Get("user_id")
+	jti, _ := c.Get("jti")
+	if userIDStr, ok1 := userID.(string); ok1 {
+		if jtiStr, ok2 := jti.(string); ok2 && jtiStr != "" {
+			if err := repository.DeleteUserSession(userIDStr, jtiStr); err != nil {
+				c.Error(err)
+			}
+		}
 	}
 
-	// Blacklist the current access token's JTI so it's no longer accepted
-	jti, _ := c.Get("jti")
-	if jtiStr, ok := jti.(string); ok && jtiStr != "" {
-		// Blacklist for the remaining TTL (AccessTokenTTL is a safe upper bound)
-		if err := repository.BlacklistToken(jtiStr, utils.AccessTokenTTL); err != nil {
+	// Delete the refresh token only when it was supplied
+	if req.RefreshToken != "" {
+		if err := repository.DeleteRefreshToken(req.RefreshToken); err != nil {
 			c.Error(err)
 		}
 	}

@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"time"
+
+	"github.com/redis/go-redis/v9"
 )
 
 // --- Refresh Token ---
@@ -93,19 +95,24 @@ func DeleteToken(key string) error {
 	return RedisClient.Del(RedisCtx, key).Err()
 }
 
-// BlacklistToken adds a token JTI to the blacklist.
-func BlacklistToken(jti string, expiration time.Duration) error {
-	key := fmt.Sprintf("blacklist:%s", jti)
-	return SetToken(key, "revoked", expiration)
-}
-
-// IsTokenBlacklisted checks if a token JTI has been blacklisted.
-func IsTokenBlacklisted(jti string) bool {
-	key := fmt.Sprintf("blacklist:%s", jti)
-	val, err := GetToken(key)
+// IsSessionActive checks whether an access token session still exists in Redis (whitelist model).
+//
+// This single check replaces the old blacklist approach and correctly handles all revocation paths:
+//   - Logout              → DeleteUserSession removes the key → (false, nil)
+//   - Password change     → DeleteAllUserSessions removes all keys → (false, nil)
+//   - Admin deactivation  → DeleteAllUserSessions removes all keys → (false, nil)
+//   - Redis unreachable   → fail-closed → (false, err) — caller must return 503
+func IsSessionActive(userID, jti string) (bool, error) {
+	key := fmt.Sprintf("access_token:%s:%s", userID, jti)
+	_, err := GetToken(key)
 	if err != nil {
-		return false
+		if err == redis.Nil {
+			// Key doesn't exist → session was revoked or never stored
+			return false, nil
+		}
+		// Redis error → fail-closed
+		return false, fmt.Errorf("redis session check failed: %w", err)
 	}
-	return val == "revoked"
+	return true, nil
 }
 

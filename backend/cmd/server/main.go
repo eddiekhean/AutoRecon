@@ -38,10 +38,11 @@ func main() {
 	// 5. Global Middleware Stack
 	r.Use(gin.Logger())                // Built-in request logger
 	r.Use(middleware.ErrorLogger())    // Centralized error logger + panic recovery
-	r.Use(cors.New(cors.Config{        // CORS policy
-		AllowAllOrigins: true,
-		AllowMethods:    []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowHeaders:    []string{"Origin", "Content-Length", "Content-Type", "Authorization"},
+	r.Use(cors.New(cors.Config{        // CORS policy — origins controlled by CORS_ALLOWED_ORIGINS in .env
+		AllowOrigins:     appConfig.Server.CORSAllowedOrigins,
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type", "Authorization"},
+		AllowCredentials: true,
 	}))
 
 	// 6. Routes
@@ -65,6 +66,7 @@ func main() {
 		{
 			users := protected.Group("/users")
 			{
+				users.GET("/me", handlers.GetProfile)
 				users.PUT("/me/password", handlers.ChangePassword)
 			}
 			protected.POST("/auth/logout", handlers.Logout)

@@ -62,6 +62,7 @@ func GenerateToken(userID string, roleID int, requiresPasswordChange bool, durat
 		RequiresPasswordChange: requiresPasswordChange,
 		JTI:                    jti,
 		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    "autorecon-api",
 			Subject:   userID,
 			IssuedAt:  jwt.NewNumericDate(now),
 			ExpiresAt: jwt.NewNumericDate(now.Add(duration)),

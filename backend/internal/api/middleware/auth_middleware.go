@@ -42,8 +42,18 @@ func AuthMiddleware(requiredRoleID ...int) gin.HandlerFunc {
 		c.Set("role_id", claims.RoleID)
 		c.Set("jti", claims.JTI)
 
-		// BLACKLIST CHECK: reject tokens that have been explicitly revoked (e.g. after logout)
-		if repository.IsTokenBlacklisted(claims.JTI) {
+		// WHITELIST CHECK: the session key access_token:{userID}:{JTI} must exist in Redis.
+		// This covers ALL revocation paths: logout, password change, admin deactivation.
+		// Fail-closed: Redis unavailable → 503 rather than silently admitting revoked tokens.
+		active, err := repository.IsSessionActive(claims.Subject, claims.JTI)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusServiceUnavailable, utils.APIResponse{
+				Status: "error",
+				Error:  "Authentication service temporarily unavailable. Please try again.",
+			})
+			return
+		}
+		if !active {
 			utils.Unauthorized(c, "Token has been revoked. Please login again.")
 			c.Abort()
 			return
