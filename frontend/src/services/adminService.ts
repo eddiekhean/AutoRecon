@@ -10,8 +10,20 @@ export const adminService = {
     const response = await api.get('/admin/users', { params: filters });
     return response.data;
   },
+  getUser: async (id: string) => {
+    const response = await api.get(`/admin/users/${id}`);
+    return response.data;
+  },
+  updateUser: async (id: string, data: { full_name?: string; email?: string; role_id?: number }) => {
+    const response = await api.patch(`/admin/users/${id}`, data);
+    return response.data;
+  },
   updateStatus: async (id: string, status: UserStatus) => {
     const response = await api.put(`/admin/users/${id}/status`, { status });
+    return response.data;
+  },
+  resetPassword: async (id: string) => {
+    const response = await api.post(`/admin/users/${id}/reset-password`);
     return response.data;
   },
 };

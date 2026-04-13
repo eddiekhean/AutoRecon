@@ -6,14 +6,14 @@ import { Link } from 'react-router-dom';
 
 export function Dashboard() {
   const { user } = useAuth();
-  const isAdmin = user?.role === 'ADMIN';
+  const isAdmin = user?.role?.toUpperCase() === 'ADMIN';
 
   const cards = [
     {
       id: 'card-change-password',
       icon: <Key size={22} />,
-      title: 'Đổi mật khẩu',
-      desc: 'Cập nhật mật khẩu đăng nhập của bạn',
+      title: 'Update Security Credentials',
+      desc: 'Manage your account security settings',
       to: '/change-password',
       color: 'var(--color-brand)',
     },
@@ -22,8 +22,8 @@ export function Dashboard() {
           {
             id: 'card-manage-users',
             icon: <Users size={22} />,
-            title: 'Quản lý người dùng',
-            desc: 'Cấp phát, khoá / mở khoá tài khoản',
+            title: 'Fleet Management',
+            desc: 'Provision and manage user access',
             to: '/admin/users',
             color: 'var(--color-success)',
           },
@@ -33,8 +33,9 @@ export function Dashboard() {
 
   return (
     <MainLayout pageTitle="Dashboard">
-      {/* Welcome */}
+      {/* Welcome banner */}
       <div
+        className="animate-page-enter"
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -59,13 +60,14 @@ export function Dashboard() {
             color: '#fff',
             fontSize: '1.125rem',
             boxShadow: '0 0 20px hsl(245 82% 63% / 0.4)',
+            flexShrink: 0,
           }}
         >
           {user?.full_name?.charAt(0).toUpperCase() ?? '?'}
         </div>
         <div>
           <h2 style={{ fontSize: '1.125rem', margin: 0 }}>
-            Chào mừng, {user?.full_name ?? 'Người dùng'}!
+            Welcome, {user?.full_name ?? 'User'}!
           </h2>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
             <p className="text-muted">{user?.email}</p>
@@ -73,7 +75,16 @@ export function Dashboard() {
           </div>
         </div>
         {isAdmin && (
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-brand-light)', fontSize: '0.825rem' }}>
+          <div
+            style={{
+              marginLeft: 'auto',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              color: 'var(--color-brand-light)',
+              fontSize: '0.825rem',
+            }}
+          >
             <ShieldCheck size={15} />
             Admin
           </div>
@@ -81,11 +92,23 @@ export function Dashboard() {
       </div>
 
       {/* Quick access cards */}
-      <h3 style={{ marginBottom: 16, fontSize: '1rem', color: 'var(--color-text-muted)', fontWeight: 500, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-        Truy cập nhanh
+      <h3
+        className="animate-fade-in"
+        style={{
+          '--delay': '80ms',
+          marginBottom: 16,
+          fontSize: '0.75rem',
+          color: 'var(--color-text-muted)',
+          fontWeight: 600,
+          letterSpacing: '0.08em',
+          textTransform: 'uppercase',
+        } as React.CSSProperties}
+      >
+        Quick Access
       </h3>
+
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16 }}>
-        {cards.map((card) => (
+        {cards.map((card, i) => (
           <Link
             key={card.id}
             id={card.id}
@@ -93,22 +116,27 @@ export function Dashboard() {
             style={{ textDecoration: 'none' }}
           >
             <div
-              className="card"
+              className="card animate-card-enter"
               style={{
+                '--delay': `${120 + i * 80}ms`,
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 12,
                 cursor: 'pointer',
-                transition: 'border-color 180ms, transform 180ms',
+                transition: 'border-color 180ms, transform 180ms, box-shadow 180ms',
                 borderColor: 'var(--color-border)',
-              }}
+              } as React.CSSProperties}
               onMouseEnter={(e) => {
-                (e.currentTarget as HTMLElement).style.borderColor = card.color;
-                (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)';
+                const el = e.currentTarget as HTMLElement;
+                el.style.borderColor = card.color;
+                el.style.transform = 'translateY(-3px)';
+                el.style.boxShadow = `0 8px 30px ${card.color}26`;
               }}
               onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.borderColor = 'var(--color-border)';
-                (e.currentTarget as HTMLElement).style.transform = 'translateY(0)';
+                const el = e.currentTarget as HTMLElement;
+                el.style.borderColor = 'var(--color-border)';
+                el.style.transform = 'translateY(0)';
+                el.style.boxShadow = '';
               }}
             >
               <div

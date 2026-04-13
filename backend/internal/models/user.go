@@ -5,8 +5,12 @@ import (
 )
 
 // User represents the users table in the database.
+//
+// GORM type tag changes for SQL Server:
+//   type:uuid              → type:uniqueidentifier  (SQL Server native UUID column type)
+//   default:gen_random_uuid() → default:newid()     (SQL Server UUID generator function)
 type User struct {
-	ID                     string    `gorm:"type:uuid;default:gen_random_uuid();primaryKey"`
+	ID                     UUID      `gorm:"type:uniqueidentifier;default:newid();primaryKey"`
 	FullName               string    `gorm:"not null;default:''"`
 	Email                  string    `gorm:"unique;not null"`
 	PasswordHash           string    `gorm:"not null"`

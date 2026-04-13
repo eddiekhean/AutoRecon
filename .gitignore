@@ -4,6 +4,14 @@
 # Go
 backend/bin/
 backend/tmp/
+backend/cmd/tools/
+
+# RSA key pair — never commit private keys
+backend/keys/
+*.pem
+
+# AI agent memory — local state, not for version control
+agent_memory/
 
 # Node
 node_modules/
@@ -21,6 +29,12 @@ dist-ssr/
 *.njsproj
 *.sln
 *.sw?
+
+# Test artifacts
+backend/tests/
+backend/*.test
+backend/test_log.txt
+test_suite_report.md
 
 # Environment — ignore all .env files, keep .env.example as template
 .env

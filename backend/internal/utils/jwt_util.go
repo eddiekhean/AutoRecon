@@ -49,7 +49,7 @@ func LoadKeys(privatePath, publicPath string) error {
 }
 
 // GenerateToken creates a signed RS256 JWT with role and session tracking.
-func GenerateToken(userID string, roleID int, requiresPasswordChange bool, duration time.Duration) (string, string, error) {
+func GenerateToken(userID uuid.UUID, roleID int, requiresPasswordChange bool, duration time.Duration) (string, string, error) {
 	if privateKey == nil {
 		return "", "", fmt.Errorf("private key is not initialized")
 	}
@@ -63,7 +63,7 @@ func GenerateToken(userID string, roleID int, requiresPasswordChange bool, durat
 		JTI:                    jti,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    "autorecon-api",
-			Subject:   userID,
+			Subject:   userID.String(),
 			IssuedAt:  jwt.NewNumericDate(now),
 			ExpiresAt: jwt.NewNumericDate(now.Add(duration)),
 		},

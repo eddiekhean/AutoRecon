@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	"gorm.io/driver/postgres"
+	"gorm.io/driver/sqlserver"
 	"gorm.io/gorm"
 
 	"autorecon-backend/internal/config"
@@ -20,15 +20,24 @@ var DB *gorm.DB
 // InitDB now accepts the validated AppConfig struct.
 func InitDB(appCfg *config.AppConfig) {
 	cfg := appCfg.Database
-	sslMode := cfg.SSLMode
-	if sslMode == "" {
-		sslMode = "disable" // local-dev fallback; set DB_SSL_MODE=require in production
+
+	encrypt := cfg.Encrypt
+	if encrypt == "" {
+		encrypt = "disable" // local-dev fallback; set DB_ENCRYPT=true in production
 	}
-	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s TimeZone=Asia/Ho_Chi_Minh",
-		cfg.Host, cfg.User, cfg.Password, cfg.Name, cfg.Port, sslMode,
+	trustCert := cfg.TrustServerCertificate
+	if trustCert == "" {
+		trustCert = "true" // local-dev fallback; set DB_TRUST_SERVER_CERT=false in production
+	}
+
+	// SQL Server DSN format:
+	// sqlserver://user:password@host:port?database=name&encrypt=disable&TrustServerCertificate=true
+	// PostgreSQL equivalent: host=... user=... password=... dbname=... port=... sslmode=...
+	dsn := fmt.Sprintf("sqlserver://%s:%s@%s:%s?database=%s&encrypt=%s&TrustServerCertificate=%s",
+		cfg.User, cfg.Password, cfg.Host, cfg.Port, cfg.Name, encrypt, trustCert,
 	)
 
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	db, err := gorm.Open(sqlserver.Open(dsn), &gorm.Config{})
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
@@ -65,9 +74,11 @@ func checkAndSeedAdmin(email, defaultPassword string) {
 			log.Fatalf("Failed to hash default password: %v", err)
 		}
 
+		// T-SQL has no boolean literals; the BIT column accepts 0 / 1.
+		// PostgreSQL equivalent used: true
 		insertQuery := `
-			INSERT INTO users (email, password_hash, requires_password_change, role_id) 
-			VALUES (?, ?, true, 1)
+			INSERT INTO users (email, password_hash, requires_password_change, role_id)
+			VALUES (?, ?, 1, 1)
 		`
 		if err := DB.Exec(insertQuery, email, hashedPassword).Error; err != nil {
 			log.Fatalf("Failed to insert Root Admin: %v", err)

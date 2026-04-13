@@ -1,7 +1,6 @@
 import { type ReactNode } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
-  Shield,
   LayoutDashboard,
   Users,
   LogOut,
@@ -27,7 +26,7 @@ export function MainLayout({ children, pageTitle }: MainLayoutProps) {
       await logout();
       navigate('/login', { replace: true });
     } catch {
-      notify('error', 'Lỗi đăng xuất', 'Có lỗi xảy ra. Vui lòng thử lại.');
+      notify('error', 'Logout Error', 'An error occurred. Please try again.');
     }
   };
 
@@ -41,9 +40,9 @@ export function MainLayout({ children, pageTitle }: MainLayoutProps) {
       <aside className="sidebar">
         <div className="sidebar__brand">
           <div className="sidebar__brand-icon">
-            <Shield size={18} color="#fff" strokeWidth={2.5} />
+            <span style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>P</span>
           </div>
-          <span className="sidebar__brand-name">AutoRecon</span>
+          <span className="sidebar__brand-name">Porsche</span>
         </div>
 
         <nav className="sidebar__nav">
@@ -66,7 +65,7 @@ export function MainLayout({ children, pageTitle }: MainLayoutProps) {
               }
             >
               <Users size={17} />
-              Quản lý người dùng
+              Fleet Management
             </NavLink>
           )}
 
@@ -77,7 +76,7 @@ export function MainLayout({ children, pageTitle }: MainLayoutProps) {
             }
           >
             <Key size={17} />
-            Đổi mật khẩu
+            Security
           </NavLink>
         </nav>
 

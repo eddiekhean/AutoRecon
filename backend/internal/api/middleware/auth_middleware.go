@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"autorecon-backend/internal/repository"
 	"autorecon-backend/internal/utils"
 )
@@ -31,7 +32,7 @@ func AuthMiddleware(requiredRoleID ...int) gin.HandlerFunc {
 		}
 
 		claims, err := utils.ValidateToken(parts[1])
-		if err != nil {
+		if err != nil || claims.Subject == "" {
 			utils.Unauthorized(c, "Invalid or expired token")
 			c.Abort()
 			return
@@ -45,7 +46,8 @@ func AuthMiddleware(requiredRoleID ...int) gin.HandlerFunc {
 		// WHITELIST CHECK: the session key access_token:{userID}:{JTI} must exist in Redis.
 		// This covers ALL revocation paths: logout, password change, admin deactivation.
 		// Fail-closed: Redis unavailable → 503 rather than silently admitting revoked tokens.
-		active, err := repository.IsSessionActive(claims.Subject, claims.JTI)
+		uid, _ := uuid.Parse(claims.Subject)
+		active, err := repository.IsSessionActive(uid, claims.JTI)
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusServiceUnavailable, utils.APIResponse{
 				Status: "error",

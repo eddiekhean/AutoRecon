@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Lock, ShieldCheck } from 'lucide-react';
+import { Lock, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
 import { MainLayout } from '../components/layout/MainLayout';
@@ -9,6 +9,7 @@ import { Input } from '../components/common/Input';
 import { Button } from '../components/common/Button';
 import { userService } from '../services/userService';
 import { changePasswordSchema, type ChangePasswordFormData } from '../utils/schemas';
+import { getApiErrorMessage } from '../utils/errors';
 
 type FieldErrors = Partial<Record<keyof ChangePasswordFormData, string>>;
 
@@ -25,8 +26,9 @@ export function ChangePassword() {
   const [errors, setErrors] = useState<FieldErrors>({});
   const [loading, setLoading] = useState(false);
 
-  const set = (key: keyof ChangePasswordFormData) => (e: React.ChangeEvent<HTMLInputElement>) =>
-    setForm((f) => ({ ...f, [key]: e.target.value }));
+  const set = (key: keyof ChangePasswordFormData) =>
+    (e: React.ChangeEvent<HTMLInputElement>) =>
+      setForm((f) => ({ ...f, [key]: e.target.value }));
 
   const validate = (): boolean => {
     const result = changePasswordSchema.safeParse(form);
@@ -53,16 +55,15 @@ export function ChangePassword() {
 
       notify(
         'success',
-        'Đổi mật khẩu thành công',
-        'Vui lòng đăng nhập lại với mật khẩu mới.'
+        'Password Update Successful',
+        'Please log in again with your new password.'
       );
 
-      // Server revokes all sessions — we must log out locally too
+      // Server has revoked all sessions — clear local state and redirect to login
       await logout();
       navigate('/login', { replace: true });
-    } catch (err: any) {
-      const msg = err?.response?.data?.message ?? 'Có lỗi xảy ra. Vui lòng thử lại.';
-      notify('error', 'Đổi mật khẩu thất bại', msg);
+    } catch (err) {
+      notify('error', 'Password Update Failed', getApiErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -70,28 +71,9 @@ export function ChangePassword() {
 
   const formContent = (
     <form style={{ display: 'flex', flexDirection: 'column', gap: 18 }} onSubmit={handleSubmit} noValidate>
-      {requiresPasswordChange && (
-        <div
-          style={{
-            display: 'flex',
-            gap: 10,
-            padding: '12px 16px',
-            borderRadius: 10,
-            background: 'var(--color-warning-bg)',
-            border: '1px solid hsl(38 92% 50% / 0.3)',
-            alignItems: 'flex-start',
-          }}
-        >
-          <ShieldCheck size={18} style={{ color: 'var(--color-warning)', flexShrink: 0, marginTop: 2 }} />
-          <p style={{ fontSize: '0.875rem', color: 'var(--color-warning)', margin: 0, lineHeight: 1.5 }}>
-            Tài khoản mới yêu cầu bạn đổi mật khẩu trước khi sử dụng hệ thống.
-          </p>
-        </div>
-      )}
-
       <Input
         id="old-password"
-        label="Mật khẩu hiện tại"
+        label="Current Password"
         type="password"
         placeholder="••••••••"
         autoComplete="current-password"
@@ -104,9 +86,9 @@ export function ChangePassword() {
 
       <Input
         id="new-password"
-        label="Mật khẩu mới"
+        label="New Password"
         type="password"
-        placeholder="Tối thiểu 12 ký tự"
+        placeholder="Minimum 12 characters"
         autoComplete="new-password"
         value={form.new_password}
         onChange={set('new_password')}
@@ -116,9 +98,9 @@ export function ChangePassword() {
 
       <Input
         id="confirm-password"
-        label="Xác nhận mật khẩu mới"
+        label="Confirm New Password"
         type="password"
-        placeholder="Nhập lại mật khẩu mới"
+        placeholder="Re-enter new password"
         autoComplete="new-password"
         value={form.confirm_password}
         onChange={set('confirm_password')}
@@ -127,7 +109,7 @@ export function ChangePassword() {
       />
 
       <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: -4 }}>
-        Phải có ít nhất 12 ký tự gồm chữ hoa, chữ thường, số và ký tự đặc biệt.
+        Must be at least 12 characters with uppercase, lowercase, numbers, and special characters.
       </p>
 
       <Button
@@ -137,29 +119,55 @@ export function ChangePassword() {
         loading={loading}
         style={{ marginTop: 4 }}
       >
-        Cập nhật mật khẩu
+        Update Password
       </Button>
     </form>
   );
 
-  // If forced change — show standalone auth layout, otherwise inside main layout
+  // Forced-change mode: full-screen auth layout with security lock visual
   if (requiresPasswordChange) {
     return (
       <AuthLayout>
-        <div style={{ padding: '32px 28px' }}>
-          <h2 className="auth-card__title">Đặt mật khẩu mới</h2>
-          <p className="auth-card__subtitle">Tài khoản của bạn yêu cầu đổi mật khẩu lần đầu</p>
+        <div className="animate-page-enter" style={{ padding: '32px 28px' }}>
+          {/* High-impact forced-change warning banner */}
+          <div className="forced-change-banner">
+            <div className="forced-change-banner__icon-wrap">
+              <ShieldAlert size={28} className="forced-change-banner__icon" />
+            </div>
+            <div>
+              <h2 className="auth-card__title" style={{ marginBottom: 4 }}>
+                Set New Password
+              </h2>
+              <p style={{ fontSize: '0.875rem', color: 'var(--color-warning)', margin: 0, lineHeight: 1.5 }}>
+                Your account requires a password change before using the system.
+                All other actions are blocked until this is completed.
+              </p>
+            </div>
+          </div>
+
           {formContent}
         </div>
       </AuthLayout>
     );
   }
 
+  // Regular change-password view inside the main layout
   return (
-    <MainLayout pageTitle="Đổi mật khẩu">
-      <div style={{ maxWidth: 480 }}>
+    <MainLayout pageTitle="Security Settings">
+      <div className="animate-page-enter" style={{ maxWidth: 480 }}>
         <div className="card">
-          <h3 style={{ marginBottom: 20 }}>Đổi mật khẩu</h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+            <div style={{
+              width: 36, height: 36,
+              borderRadius: 'var(--r-md)',
+              background: '#dc143c20',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: 'var(--color-brand)',
+            }}>
+              <ShieldCheck size={18} />
+            </div>
+            <h3 style={{ margin: 0 }}>Change Password</h3>
+          </div>
           {formContent}
         </div>
       </div>

@@ -1,48 +1,47 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
 
 /* ─── Design Tokens ─────────────────────────────────────────── */
 :root {
-  /* Brand palette (HSL for easy manipulation) */
-  --hue-brand: 245;
-  --color-brand:        hsl(var(--hue-brand) 82% 63%);
-  --color-brand-dark:   hsl(var(--hue-brand) 82% 50%);
-  --color-brand-light:  hsl(var(--hue-brand) 82% 80%);
-  --color-brand-alpha:  hsl(var(--hue-brand) 82% 63% / 0.15);
+  /* Porsche Brand Palette */
+  --color-brand:        #dc143c;
+  --color-brand-dark:   #b80000;
+  --color-brand-light:  #ff1744;
+  --color-brand-alpha:  #dc143c20;
 
-  /* Neutrals */
-  --color-bg:           #0d0e14;
-  --color-surface:      #13141c;
-  --color-surface-2:    #1a1b26;
-  --color-surface-3:    #20212e;
-  --color-border:       rgba(255 255 255 / 0.08);
-  --color-border-focus: hsl(var(--hue-brand) 82% 63% / 0.6);
+  /* Neutrals - Premium Black & Grey */
+  --color-bg:           #0a0a0a;
+  --color-surface:      #1a1a1a;
+  --color-surface-2:    #242424;
+  --color-surface-3:    #2f2f2f;
+  --color-border:       rgba(192 192 192 / 0.12);
+  --color-border-focus: #dc143c60;
 
-  /* Text */
-  --color-text:         #c8cad6;
-  --color-text-muted:   #6b6e82;
-  --color-text-heading: #e8eaf0;
+  /* Text - White & Light Grey for Premium Feel */
+  --color-text:         #e8e8e8;
+  --color-text-muted:   #a0a0a0;
+  --color-text-heading: #ffffff;
 
   /* Semantic */
-  --color-success:      hsl(142 71% 45%);
-  --color-success-bg:   hsl(142 71% 45% / 0.12);
-  --color-error:        hsl(0 84% 60%);
-  --color-error-bg:     hsl(0 84% 60% / 0.12);
-  --color-warning:      hsl(38 92% 50%);
-  --color-warning-bg:   hsl(38 92% 50% / 0.12);
-  --color-info:         hsl(210 90% 60%);
-  --color-info-bg:      hsl(210 90% 60% / 0.12);
+  --color-success:      #22c55e;
+  --color-success-bg:   #22c55e15;
+  --color-error:        #ef4444;
+  --color-error-bg:     #ef444415;
+  --color-warning:      #f59e0b;
+  --color-warning-bg:   #f59e0b15;
+  --color-info:         #3b82f6;
+  --color-info-bg:      #3b82f615;
 
   /* Badge */
-  --color-badge-active-bg:   hsl(142 71% 45% / 0.15);
-  --color-badge-active-text: hsl(142 71% 55%);
-  --color-badge-inactive-bg: hsl(0 0% 50% / 0.15);
-  --color-badge-inactive-text: hsl(0 0% 65%);
+  --color-badge-active-bg:   #22c55e20;
+  --color-badge-active-text: #22c55e;
+  --color-badge-inactive-bg: #6b7280;
+  --color-badge-inactive-text: #f3f4f6;
 
-  /* Shadows */
-  --shadow-sm:  0 1px 3px rgba(0 0 0 / 0.4);
-  --shadow-md:  0 4px 16px rgba(0 0 0 / 0.5);
-  --shadow-lg:  0 12px 40px rgba(0 0 0 / 0.6);
-  --shadow-glow: 0 0 40px hsl(var(--hue-brand) 82% 63% / 0.25);
+  /* Shadows - Subtle Premium */
+  --shadow-sm:  0 1px 2px rgba(0 0 0 / 0.5);
+  --shadow-md:  0 2px 8px rgba(0 0 0 / 0.6);
+  --shadow-lg:  0 4px 16px rgba(0 0 0 / 0.7);
+  --shadow-glow: 0 0 20px #dc143c30;
 
   /* Spacing */
   --r-sm: 8px;
@@ -50,13 +49,13 @@
   --r-lg: 16px;
   --r-xl: 24px;
 
-  /* Typography */
-  --font-sans: 'Inter', system-ui, sans-serif;
+  /* Typography - Premium sans-serif */
+  --font-sans: 'Poppins', 'Helvetica Neue', system-ui, sans-serif;
   --font-mono: ui-monospace, 'Cascadia Code', Consolas, monospace;
 
-  /* Transitions */
+  /* Transitions - Subtle Premium Feel */
   --ease: cubic-bezier(0.4, 0, 0.2, 1);
-  --duration: 180ms;
+  --duration: 160ms;
 }
 
 /* ─── Reset & Base ───────────────────────────────────────────── */
@@ -134,11 +133,11 @@ p  { color: var(--color-text); }
   background: var(--color-brand);
   color: #fff;
   border-color: var(--color-brand);
-  box-shadow: 0 2px 12px hsl(var(--hue-brand) 82% 63% / 0.35);
+  box-shadow: 0 2px 8px #dc143c35;
 }
 .btn--primary:hover:not(:disabled) {
   background: var(--color-brand-dark);
-  box-shadow: 0 4px 20px hsl(var(--hue-brand) 82% 63% / 0.5);
+  box-shadow: 0 4px 12px #dc143c50;
   transform: translateY(-1px);
 }
 .btn--primary:active:not(:disabled) { transform: translateY(0); }
@@ -155,22 +154,22 @@ p  { color: var(--color-text); }
 }
 
 .btn--danger {
-  background: var(--color-error-bg);
-  color: var(--color-error);
-  border-color: hsl(0 84% 60% / 0.3);
+  background: #ef444415;
+  color: #ef4444;
+  border-color: #ef444430;
 }
 .btn--danger:hover:not(:disabled) {
-  background: var(--color-error);
+  background: #ef4444;
   color: #fff;
 }
 
 .btn--success {
-  background: var(--color-success-bg);
-  color: var(--color-success);
-  border-color: hsl(142 71% 45% / 0.3);
+  background: #22c55e15;
+  color: #22c55e;
+  border-color: #22c55e30;
 }
 .btn--success:hover:not(:disabled) {
-  background: var(--color-success);
+  background: #22c55e;
   color: #fff;
 }
 
@@ -242,7 +241,7 @@ p  { color: var(--color-text); }
 .input::placeholder { color: var(--color-text-muted); }
 .input:focus {
   border-color: var(--color-border-focus);
-  box-shadow: 0 0 0 3px hsl(var(--hue-brand) 82% 63% / 0.15);
+  box-shadow: 0 0 0 3px #dc143c15;
 }
 .input--error { border-color: var(--color-error) !important; }
 .input__error-msg {
@@ -279,10 +278,10 @@ p  { color: var(--color-text); }
   font-weight: 600;
   letter-spacing: 0.04em;
 }
-.badge--active   { background: var(--color-badge-active-bg);   color: var(--color-badge-active-text); }
-.badge--inactive { background: var(--color-badge-inactive-bg); color: var(--color-badge-inactive-text); }
-.badge--admin    { background: var(--color-brand-alpha);       color: var(--color-brand-light); }
-.badge--sale     { background: hsl(210 90% 60% / 0.12);        color: hsl(210 90% 70%); }
+.badge--active   { background: #22c55e20;   color: #22c55e; }
+.badge--inactive { background: #60606015; color: #a0a0a0; }
+.badge--admin    { background: #dc143c20;       color: var(--color-brand-light); }
+.badge--sale     { background: #3b82f615;        color: #60a5fa; }
 
 /* ─── Table ──────────────────────────────────────────────────── */
 .table-wrap { overflow-x: auto; border-radius: var(--r-lg); }
@@ -385,10 +384,10 @@ p  { color: var(--color-text); }
   box-shadow: var(--shadow-md);
   animation: slide-right 0.22s var(--ease);
 }
-.toast--success { border-color: hsl(142 71% 45% / 0.3); background: var(--color-surface-2); }
-.toast--error   { border-color: hsl(0 84% 60% / 0.3);   background: var(--color-surface-2); }
-.toast--warning { border-color: hsl(38 92% 50% / 0.3);  background: var(--color-surface-2); }
-.toast--info    { border-color: hsl(210 90% 60% / 0.3); background: var(--color-surface-2); }
+.toast--success { border-color: #22c55e30; background: var(--color-surface-2); }
+.toast--error   { border-color: #ef444430;   background: var(--color-surface-2); }
+.toast--warning { border-color: #f59e0b30;  background: var(--color-surface-2); }
+.toast--info    { border-color: #3b82f630; background: var(--color-surface-2); }
 .toast--success .toast__icon { color: var(--color-success); }
 .toast--error   .toast__icon { color: var(--color-error); }
 .toast--warning .toast__icon { color: var(--color-warning); }
@@ -437,7 +436,7 @@ p  { color: var(--color-text); }
   background: var(--color-brand);
   border-radius: var(--r-sm);
   display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 0 20px hsl(var(--hue-brand) 82% 63% / 0.4);
+  box-shadow: 0 0 16px #dc143c40;
 }
 .sidebar__brand-name {
   font-size: 1.0625rem;
@@ -464,8 +463,8 @@ p  { color: var(--color-text); }
   transition: all var(--duration) var(--ease);
 }
 .nav-item:hover { background: var(--color-surface-2); color: var(--color-text-heading); }
-.nav-item--active { background: var(--color-brand-alpha); color: var(--color-brand-light); }
-.nav-item--active:hover { background: var(--color-brand-alpha); }
+.nav-item--active { background: #dc143c20; color: var(--color-brand-light); }
+.nav-item--active:hover { background: #dc143c20; }
 .sidebar__footer { padding: 12px 10px; border-top: 1px solid var(--color-border); }
 .sidebar__user {
   display: flex;
@@ -525,8 +524,8 @@ p  { color: var(--color-text); }
   justify-content: center;
   padding: 24px;
   background:
-    radial-gradient(ellipse 80% 60% at 20% 10%, hsl(var(--hue-brand) 82% 40% / 0.18) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 50% at 80% 90%, hsl(210 90% 50% / 0.12)  0%, transparent 60%),
+    radial-gradient(ellipse 80% 60% at 20% 10%, #dc143c15 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 80% 90%, #3f3f3f08  0%, transparent 60%),
     var(--color-bg);
 }
 .auth-card {
@@ -545,7 +544,7 @@ p  { color: var(--color-text); }
   background: var(--color-brand);
   border-radius: 12px;
   display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 0 30px hsl(var(--hue-brand) 82% 63% / 0.5);
+  box-shadow: 0 0 24px #dc143c50;
 }
 .auth-brand__name {
   font-size: 1.25rem;
@@ -644,3 +643,175 @@ p  { color: var(--color-text); }
   .page-content { padding: 16px; }
   .topbar { padding: 12px 16px; }
 }
+
+/* ─── Staggered Entry Animations ────────────────────────────── */
+@keyframes page-enter {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes card-enter {
+  from { opacity: 0; transform: translateY(16px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+
+@keyframes row-enter {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-page-enter {
+  animation: page-enter 0.38s var(--ease) both;
+}
+
+.animate-card-enter {
+  animation: card-enter 0.36s var(--ease) both;
+  animation-delay: var(--delay, 0ms);
+}
+
+.animate-row-enter {
+  animation: row-enter 0.26s var(--ease) both;
+  animation-delay: var(--delay, 0ms);
+}
+
+.animate-fade-in {
+  animation: fade-in-up 0.32s var(--ease) both;
+  animation-delay: var(--delay, 0ms);
+}
+
+/* ─── Maintenance Banner ─────────────────────────────────────── */
+.maintenance-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 20px;
+  background: hsl(38 92% 50% / 0.12);
+  border-bottom: 1px solid hsl(38 92% 50% / 0.35);
+  backdrop-filter: blur(8px);
+  animation: fade-in-up 0.25s var(--ease) both;
+}
+
+.maintenance-banner__icon {
+  color: var(--color-warning);
+  flex-shrink: 0;
+}
+
+.maintenance-banner__text {
+  flex: 1;
+  font-size: 0.875rem;
+  color: var(--color-warning);
+  line-height: 1.4;
+}
+
+.maintenance-banner__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: var(--color-warning);
+  cursor: pointer;
+  border-radius: 4px;
+  flex-shrink: 0;
+  opacity: 0.7;
+  transition: opacity var(--duration) var(--ease);
+}
+.maintenance-banner__close:hover { opacity: 1; }
+
+/* ─── Password Reveal Countdown ──────────────────────────────── */
+.countdown-track {
+  height: 3px;
+  background: var(--color-border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.countdown-bar {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.5s linear, background 0.4s ease;
+}
+
+.password-reveal__expired {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 0 4px;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+/* ─── Forced Password Change Banner ─────────────────────────── */
+.forced-change-banner {
+  display: flex;
+  gap: 14px;
+  padding: 16px;
+  background: hsl(38 92% 50% / 0.08);
+  border: 1px solid hsl(38 92% 50% / 0.3);
+  border-radius: var(--r-lg);
+  margin-bottom: 24px;
+  align-items: flex-start;
+}
+
+.forced-change-banner__icon-wrap {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-md);
+  background: hsl(38 92% 50% / 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.forced-change-banner__icon {
+  color: var(--color-warning);
+}
+
+/* ─── Table Empty State ──────────────────────────────────────── */
+.table-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 56px 16px;
+}
+
+.table-empty-state__icon {
+  color: var(--color-text-muted);
+  opacity: 0.4;
+  margin-bottom: 4px;
+}
+
+.table-empty-state__text {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.table-empty-state__hint {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  opacity: 0.7;
+  margin: 0;
+}
+
+/* ─── Badge viewer variant ───────────────────────────────────── */
+.badge--viewer { background: #3b82f615; color: #60a5fa; }
+
+/* ─── Badge warning variant ──────────────────────────────────── */
+.badge--warning { background: #f59e0b15; color: #fbbf24; }

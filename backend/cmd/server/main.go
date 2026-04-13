@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -16,14 +17,13 @@ import (
 func main() {
 	log.Println("Starting AutoRecon API Server...")
 
-	// 1. Tải và Validate Cấu hình
+	// 1. Load and validate configuration
 	appConfig := config.LoadConfig()
 
-	// 2. Khởi tạo Database (schema + seed) và Redis
+	// 2. Initialize Database (schema + seed)
 	repository.InitDB(appConfig)
-	repository.InitRedis(appConfig.Redis)
 
-	// 3. Khởi tạo JWT Keys (RSA asymmetric) + parse TTL config
+	// 3. Initialize JWT keys (RSA asymmetric) + parse TTL config
 	if err := utils.LoadKeys(appConfig.Server.JWTPrivateKeyPath, appConfig.Server.JWTPublicKeyPath); err != nil {
 		log.Fatalf("Failed to load JWT keys: %v", err)
 	}
@@ -32,20 +32,32 @@ func main() {
 	}
 	log.Printf("Token TTL → Access: %s | Refresh: %s", utils.AccessTokenTTL, utils.RefreshTokenTTL)
 
-	// 4. Khởi tạo Router Gin
-	r := gin.New() // Use gin.New() instead of Default() so we control middleware stack
+	// 4. Start background token cleanup worker.
+	// SQL Server has no key TTL, so expired rows are pruned on a schedule.
+	// Batched deletes (TOP 1000) avoid full table locks.
+	go func() {
+		ticker := time.NewTicker(30 * time.Minute)
+		defer ticker.Stop()
+		for range ticker.C {
+			log.Println("Running expired token cleanup...")
+			repository.CleanupExpiredTokens()
+		}
+	}()
 
-	// 5. Global Middleware Stack
-	r.Use(gin.Logger())                // Built-in request logger
-	r.Use(middleware.ErrorLogger())    // Centralized error logger + panic recovery
-	r.Use(cors.New(cors.Config{        // CORS policy — origins controlled by CORS_ALLOWED_ORIGINS in .env
+	// 5. Initialize Gin router
+	r := gin.New()
+
+	// 6. Global middleware stack
+	r.Use(gin.Logger())
+	r.Use(middleware.ErrorLogger())
+	r.Use(cors.New(cors.Config{
 		AllowOrigins:     appConfig.Server.CORSAllowedOrigins,
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type", "Authorization"},
 		AllowCredentials: true,
 	}))
 
-	// 6. Routes
+	// 7. Routes
 	v1 := r.Group("/api/v1")
 	{
 		// Health check (public)
@@ -58,6 +70,9 @@ func main() {
 		{
 			auth.POST("/login", handlers.Login)
 			auth.POST("/refresh", handlers.RefreshToken)
+			// Logout reads the refresh token cookie — no access token required.
+			// This lets users with an expired access token still log out.
+			auth.POST("/logout", handlers.Logout)
 		}
 
 		// --- Protected Routes (valid JWT required) ---
@@ -68,8 +83,8 @@ func main() {
 			{
 				users.GET("/me", handlers.GetProfile)
 				users.PUT("/me/password", handlers.ChangePassword)
+				users.DELETE("/me/sessions", handlers.RevokeAllSessions)
 			}
-			protected.POST("/auth/logout", handlers.Logout)
 		}
 
 		// --- Admin-Only Routes (valid JWT + role_id == 1) ---
@@ -80,12 +95,15 @@ func main() {
 			{
 				adminUsers.POST("", handlers.ProvisionUser)
 				adminUsers.GET("", handlers.ListUsers)
+				adminUsers.GET("/:id", handlers.GetUser)
+				adminUsers.PATCH("/:id", handlers.UpdateUser)
 				adminUsers.PUT("/:id/status", handlers.UpdateUserStatus)
+				adminUsers.POST("/:id/reset-password", handlers.ResetUserPassword)
 			}
 		}
 	}
 
-	// 7. Start server
+	// 8. Start server
 	if err := r.Run(":" + appConfig.Server.Port); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}

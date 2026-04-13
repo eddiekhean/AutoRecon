@@ -7,6 +7,7 @@ import { AuthLayout } from '../components/layout/AuthLayout';
 import { Input } from '../components/common/Input';
 import { Button } from '../components/common/Button';
 import { loginSchema, type LoginFormData } from '../utils/schemas';
+import { getApiErrorMessage } from '../utils/errors';
 
 type FieldErrors = Partial<Record<keyof LoginFormData, string>>;
 
@@ -28,7 +29,7 @@ export function Login() {
     const fieldErrors: FieldErrors = {};
     result.error.issues.forEach((issue) => {
       const key = issue.path[0] as keyof LoginFormData;
-      fieldErrors[key] = issue.message;
+      if (!fieldErrors[key]) fieldErrors[key] = issue.message;
     });
     setErrors(fieldErrors);
     return false;
@@ -40,13 +41,17 @@ export function Login() {
 
     setLoading(true);
     try {
-      await login(form);
-      notify('success', 'Đăng nhập thành công', 'Chào mừng trở lại!');
-      navigate('/', { replace: true });
-    } catch (err: any) {
-      const msg =
-        err?.response?.data?.message ?? 'Email hoặc mật khẩu không chính xác.';
-      notify('error', 'Đăng nhập thất bại', msg);
+      const requiresPasswordChange = await login(form);
+      if (requiresPasswordChange) {
+        // Navigate directly — avoids a redirect round-trip through AuthGuard
+        navigate('/change-password', { replace: true });
+      } else {
+        notify('success', 'Login Successful', 'Welcome back!');
+        navigate('/', { replace: true });
+      }
+    } catch (err) {
+      // Use the centralised error mapper — never display raw server messages
+      notify('error', 'Login Failed', getApiErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -54,50 +59,52 @@ export function Login() {
 
   return (
     <AuthLayout>
-      <div style={{ padding: '32px 28px' }}>
-        <h2 className="auth-card__title">Đăng nhập</h2>
-        <p className="auth-card__subtitle">
-          Nhập thông tin tài khoản để tiếp tục
-        </p>
+      <div className="animate-page-enter" style={{ padding: '32px 28px' }}>
+        <h2 className="auth-card__title">Sign In</h2>
+        <p className="auth-card__subtitle">Enter your credentials to access your account</p>
 
         <form className="auth-card__form" onSubmit={handleSubmit} noValidate>
-          <Input
-            id="login-email"
-            label="Email"
-            type="email"
-            placeholder="ten@congty.com"
-            autoComplete="email"
-            autoFocus
-            value={form.email}
-            onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-            error={errors.email}
-            leftIcon={<Mail size={16} />}
-          />
+          <div className="animate-fade-in" style={{ '--delay': '60ms' } as React.CSSProperties}>
+            <Input
+              id="login-email"
+              label="Email"
+              type="email"
+              placeholder="you@company.com"
+              autoComplete="email"
+              autoFocus
+              value={form.email}
+              onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+              error={errors.email}
+              leftIcon={<Mail size={16} />}
+            />
+          </div>
 
-          <Input
-            id="login-password"
-            label="Mật khẩu"
-            type="password"
-            placeholder="••••••••"
-            autoComplete="current-password"
-            value={form.password}
-            onChange={(e) =>
-              setForm((f) => ({ ...f, password: e.target.value }))
-            }
-            error={errors.password}
-            leftIcon={<Lock size={16} />}
-          />
+          <div className="animate-fade-in" style={{ '--delay': '120ms' } as React.CSSProperties}>
+            <Input
+              id="login-password"
+              label="Password"
+              type="password"
+              placeholder="••••••••"
+              autoComplete="current-password"
+              value={form.password}
+              onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+              error={errors.password}
+              leftIcon={<Lock size={16} />}
+            />
+          </div>
 
-          <Button
-            id="btn-login"
-            type="submit"
-            fullWidth
-            size="lg"
-            loading={loading}
-            style={{ marginTop: 6 }}
-          >
-            Đăng nhập
-          </Button>
+          <div className="animate-fade-in" style={{ '--delay': '180ms' } as React.CSSProperties}>
+            <Button
+              id="btn-login"
+              type="submit"
+              fullWidth
+              size="lg"
+              loading={loading}
+              style={{ marginTop: 6 }}
+            >
+              Sign In
+            </Button>
+          </div>
         </form>
       </div>
     </AuthLayout>

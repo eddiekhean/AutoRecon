@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 
 	"autorecon-backend/internal/models"
 	"autorecon-backend/internal/repository"
@@ -23,8 +25,8 @@ func GetProfile(c *gin.Context) {
 	}
 
 	type UserProfileResponse struct {
-		UserID   string `json:"user_id"`
-		Email    string `json:"email"`
+		UserID   models.UUID `json:"user_id"`
+		Email    string      `json:"email"`
 		FullName string `json:"full_name"`
 		Role     string `json:"role"`
 	}
@@ -35,7 +37,7 @@ func GetProfile(c *gin.Context) {
 		Joins("LEFT JOIN roles ON users.role_id = roles.id").
 		Where("users.id = ?", userID)
 
-	if err := query.Scan(&profile).Error; err != nil || profile.UserID == "" {
+	if err := query.Scan(&profile).Error; err != nil || uuid.UUID(profile.UserID) == uuid.Nil {
 		utils.NotFound(c, "User not found")
 		return
 	}
@@ -58,7 +60,8 @@ func ChangePassword(c *gin.Context) {
 	}
 
 	var user models.User
-	if err := repository.DB.First(&user, "id = ?", userID).Error; err != nil {
+	uid, _ := uuid.Parse(fmt.Sprintf("%v", userID))
+	if err := repository.DB.First(&user, "id = ?", uid.String()).Error; err != nil {
 		utils.NotFound(c, "User not found")
 		return
 	}
@@ -84,11 +87,39 @@ func ChangePassword(c *gin.Context) {
 		return
 	}
 
-	// Delete all user sessions to force re-login
-	userIDStr, _ := userID.(string)
-	if err := repository.DeleteAllUserSessions(userIDStr); err != nil {
+	// Revoke all sessions and refresh tokens — password change must invalidate every active session
+	if err := repository.DeleteAllUserSessions(uid); err != nil {
+		c.Error(err)
+	}
+	if err := repository.DeleteAllUserRefreshTokens(uid); err != nil {
 		c.Error(err)
 	}
 
 	utils.SuccessMessage(c, "Password changed successfully. All previous sessions have been logged out.")
+}
+
+// RevokeAllSessions terminates every active session for the authenticated user.
+// This is the deliberate "log out everywhere" action — distinct from the automatic
+// revocation that happens on password change or account deactivation.
+// DELETE /api/v1/users/me/sessions
+func RevokeAllSessions(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		utils.Unauthorized(c, "User not authenticated")
+		return
+	}
+	uid, _ := uuid.Parse(fmt.Sprintf("%v", userID))
+
+	if err := repository.DeleteAllUserSessions(uid); err != nil {
+		c.Error(err)
+		utils.InternalError(c, "Failed to revoke sessions")
+		return
+	}
+	if err := repository.DeleteAllUserRefreshTokens(uid); err != nil {
+		c.Error(err)
+		utils.InternalError(c, "Failed to revoke refresh tokens")
+		return
+	}
+
+	utils.SuccessMessage(c, "All sessions have been revoked. Please login again.")
 }

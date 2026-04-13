@@ -7,8 +7,6 @@ export interface User {
 
 export interface AuthState {
   user: User | null;
-  accessToken: string | null;
-  refreshToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   requiresPasswordChange: boolean;
@@ -21,6 +19,18 @@ export interface UserListItem {
   role: string;
   status: 'ACTIVE' | 'INACTIVE';
   created_at: string;
+}
+
+export interface UserDetail {
+  user_id: string;
+  full_name: string;
+  email: string;
+  role: string;
+  role_id: number;
+  status: 'ACTIVE' | 'INACTIVE';
+  requires_password_change: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface ProvisionedUser {

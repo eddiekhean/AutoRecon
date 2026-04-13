@@ -1,5 +1,4 @@
 import { type ReactNode } from 'react';
-import { Shield } from 'lucide-react';
 
 interface AuthLayoutProps {
   children: ReactNode;
@@ -11,9 +10,9 @@ export function AuthLayout({ children }: AuthLayoutProps) {
       <div className="auth-card">
         <div className="auth-brand">
           <div className="auth-brand__icon">
-            <Shield size={22} color="#fff" strokeWidth={2.5} />
+            <span style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#fff' }}>P</span>
           </div>
-          <span className="auth-brand__name">AutoRecon</span>
+          <span className="auth-brand__name">Porsche</span>
         </div>
         <div className="card card--glass">
           {children}

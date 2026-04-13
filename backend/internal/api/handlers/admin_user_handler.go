@@ -4,7 +4,10 @@ import (
 	"crypto/rand"
 	"fmt"
 	"math/big"
+	"net/mail"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/gin-gonic/gin"
 
 	"autorecon-backend/internal/models"
@@ -34,7 +37,6 @@ func generateSecurePassword() (string, error) {
 	}
 
 	password := make([]byte, 12)
-	// Guarantee character class diversity in first 4 positions
 	required := []string{upperLetters, lowerLetters, digits, symbols}
 	for i, charset := range required {
 		ch, err := pick(charset)
@@ -43,7 +45,6 @@ func generateSecurePassword() (string, error) {
 		}
 		password[i] = ch
 	}
-	// Fill remaining 8 positions from full charset
 	for i := 4; i < 12; i++ {
 		ch, err := pick(allChars)
 		if err != nil {
@@ -51,8 +52,6 @@ func generateSecurePassword() (string, error) {
 		}
 		password[i] = ch
 	}
-
-	// Shuffle to avoid predictable position pattern
 	for i := len(password) - 1; i > 0; i-- {
 		j, err := rand.Int(rand.Reader, big.NewInt(int64(i+1)))
 		if err != nil {
@@ -60,7 +59,6 @@ func generateSecurePassword() (string, error) {
 		}
 		password[i], password[j.Int64()] = password[j.Int64()], password[i]
 	}
-
 	return string(password), nil
 }
 
@@ -76,6 +74,14 @@ type UpdateUserStatusRequest struct {
 	Status string `json:"status" binding:"required,oneof=ACTIVE INACTIVE"`
 }
 
+// UpdateUserRequest supports partial updates — all fields are optional.
+// At least one must be provided or the handler returns 400.
+type UpdateUserRequest struct {
+	FullName string `json:"full_name"`
+	Email    string `json:"email"`
+	RoleID   int    `json:"role_id"`
+}
+
 // --- Handlers ---
 
 // ProvisionUser creates a new employee account with a system-generated password.
@@ -87,14 +93,12 @@ func ProvisionUser(c *gin.Context) {
 		return
 	}
 
-	// Check for duplicate email
 	var existing models.User
 	if err := repository.DB.Where("email = ?", req.Email).First(&existing).Error; err == nil {
 		utils.Error(c, 409, fmt.Sprintf("Email '%s' is already registered", req.Email))
 		return
 	}
 
-	// Generate a secure random password
 	plainPassword, err := generateSecurePassword()
 	if err != nil {
 		c.Error(err)
@@ -114,7 +118,7 @@ func ProvisionUser(c *gin.Context) {
 		Email:                  req.Email,
 		PasswordHash:           hashedPassword,
 		RoleID:                 req.RoleID,
-		RequiresPasswordChange: true, // Force password change on first login
+		RequiresPasswordChange: true,
 		Status:                 "ACTIVE",
 	}
 
@@ -127,23 +131,23 @@ func ProvisionUser(c *gin.Context) {
 	utils.Created(c, gin.H{
 		"user_id":          user.ID,
 		"email":            user.Email,
-		"default_password": plainPassword, // Returned ONCE — never stored in plain text
+		"default_password": plainPassword,
 	})
 }
 
 // ListUsers returns all users, with optional role and status filters.
-// GET /api/v1/admin/users?role=Sale&status=INACTIVE
+// GET /api/v1/admin/users?role=SALE&status=INACTIVE
 func ListUsers(c *gin.Context) {
 	roleFilter := c.Query("role")
 	statusFilter := c.Query("status")
 
 	type UserResponse struct {
-		UserID    string `json:"user_id"`
-		FullName  string `json:"full_name"`
-		Email     string `json:"email"`
-		Role      string `json:"role"`
-		Status    string `json:"status"`
-		CreatedAt string `json:"created_at"`
+		UserID    uuid.UUID `json:"user_id"`
+		FullName  string    `json:"full_name"`
+		Email     string    `json:"email"`
+		Role      string    `json:"role"`
+		Status    string    `json:"status"`
+		CreatedAt time.Time `json:"created_at"`
 	}
 
 	query := repository.DB.Table("users").
@@ -167,14 +171,115 @@ func ListUsers(c *gin.Context) {
 	utils.Success(c, users)
 }
 
+// GetUser returns the full profile of a specific user, including admin-visible fields.
+// GET /api/v1/admin/users/:id
+func GetUser(c *gin.Context) {
+	targetUserID := c.Param("id")
+
+	type UserDetailResponse struct {
+		UserID                 uuid.UUID `json:"user_id"`
+		FullName               string    `json:"full_name"`
+		Email                  string    `json:"email"`
+		Role                   string    `json:"role"`
+		RoleID                 int       `json:"role_id"`
+		Status                 string    `json:"status"`
+		RequiresPasswordChange bool      `json:"requires_password_change"`
+		CreatedAt              time.Time `json:"created_at"`
+		UpdatedAt              time.Time `json:"updated_at"`
+	}
+
+	var detail UserDetailResponse
+	err := repository.DB.Table("users").
+		Select("users.id as user_id, users.full_name, users.email, roles.role_name as role, users.role_id, users.status, users.requires_password_change, users.created_at, users.updated_at").
+		Joins("LEFT JOIN roles ON users.role_id = roles.id").
+		Where("users.id = ?", targetUserID).
+		Scan(&detail).Error
+
+	if err != nil || detail.UserID == uuid.Nil {
+		utils.NotFound(c, "User not found")
+		return
+	}
+
+	utils.Success(c, detail)
+}
+
+// UpdateUser partially updates a user's profile (full_name, email, role_id).
+// Status changes must go through PUT /admin/users/:id/status.
+// PATCH /api/v1/admin/users/:id
+func UpdateUser(c *gin.Context) {
+	targetUserID := c.Param("id")
+	callerID, _ := c.Get("user_id")
+	uid, _ := uuid.Parse(targetUserID)
+
+	var req UpdateUserRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.BadRequest(c, "Invalid request: "+err.Error())
+		return
+	}
+
+	if req.FullName == "" && req.Email == "" && req.RoleID == 0 {
+		utils.BadRequest(c, "At least one field (full_name, email, role_id) is required")
+		return
+	}
+
+	// Validate email format when provided
+	if req.Email != "" {
+		if _, err := mail.ParseAddress(req.Email); err != nil {
+			utils.BadRequest(c, "Invalid email address")
+			return
+		}
+	}
+
+	// Prevent admins from changing their own role to avoid accidental privilege change
+	callerIDStr := fmt.Sprintf("%v", callerID)
+	if callerIDStr == uid.String() && req.RoleID != 0 {
+		utils.BadRequest(c, "You cannot change your own role")
+		return
+	}
+
+	var user models.User
+	if err := repository.DB.First(&user, "id = ?", uid.String()).Error; err != nil {
+		utils.NotFound(c, "User not found")
+		return
+	}
+
+	// Check email uniqueness before applying (skip if email is unchanged)
+	if req.Email != "" && req.Email != user.Email {
+		var clash models.User
+		if err := repository.DB.Where("email = ? AND id != ?", req.Email, uid).First(&clash).Error; err == nil {
+			utils.Error(c, 409, fmt.Sprintf("Email '%s' is already in use by another account", req.Email))
+			return
+		}
+	}
+
+	if req.FullName != "" {
+		user.FullName = req.FullName
+	}
+	if req.Email != "" {
+		user.Email = req.Email
+	}
+	if req.RoleID != 0 {
+		user.RoleID = req.RoleID
+	}
+
+	if err := repository.DB.Save(&user).Error; err != nil {
+		c.Error(err)
+		utils.InternalError(c, "Failed to update user")
+		return
+	}
+
+	utils.SuccessMessage(c, "User updated successfully")
+}
+
 // UpdateUserStatus activates or deactivates an employee account.
 // PUT /api/v1/admin/users/:id/status
 func UpdateUserStatus(c *gin.Context) {
 	targetUserID := c.Param("id")
-
-	// Prevent an admin from deactivating their own account
 	callerID, _ := c.Get("user_id")
-	if callerIDStr, ok := callerID.(string); ok && callerIDStr == targetUserID {
+	uid, _ := uuid.Parse(targetUserID)
+
+	callerIDStr := fmt.Sprintf("%v", callerID)
+	if callerIDStr == uid.String() {
 		utils.BadRequest(c, "You cannot change your own account status")
 		return
 	}
@@ -186,7 +291,7 @@ func UpdateUserStatus(c *gin.Context) {
 	}
 
 	var user models.User
-	if err := repository.DB.First(&user, "id = ?", targetUserID).Error; err != nil {
+	if err := repository.DB.First(&user, "id = ?", uid.String()).Error; err != nil {
 		utils.NotFound(c, "User not found")
 		return
 	}
@@ -200,14 +305,75 @@ func UpdateUserStatus(c *gin.Context) {
 
 	message := fmt.Sprintf("User status updated to %s.", req.Status)
 
-	// If blocking the user, wipe all their active Redis sessions immediately
 	if req.Status == "INACTIVE" {
-		if err := repository.DeleteAllUserSessions(targetUserID); err != nil {
+		if err := repository.DeleteAllUserSessions(uid); err != nil {
 			c.Error(err)
-			// Non-fatal: DB was updated; log but continue
+		}
+		if err := repository.DeleteAllUserRefreshTokens(uid); err != nil {
+			c.Error(err)
 		}
 		message = "User status updated to INACTIVE. All active sessions have been cleared."
 	}
 
 	utils.SuccessMessage(c, message)
+}
+
+// ResetUserPassword generates a new temporary password for the target user,
+// forces a password-change on next login, and immediately revokes all active sessions.
+// This mirrors the initial provisioning flow but for an existing account.
+// POST /api/v1/admin/users/:id/reset-password
+func ResetUserPassword(c *gin.Context) {
+	targetUserID := c.Param("id")
+	callerID, _ := c.Get("user_id")
+	uid, _ := uuid.Parse(targetUserID)
+	callerIDStr := fmt.Sprintf("%v", callerID)
+
+	// Admins must use PUT /users/me/password for their own accounts
+	if callerIDStr == uid.String() {
+		utils.BadRequest(c, "Use PUT /users/me/password to change your own password")
+		return
+	}
+
+	var user models.User
+	if err := repository.DB.First(&user, "id = ?", uid.String()).Error; err != nil {
+		utils.NotFound(c, "User not found")
+		return
+	}
+
+	plainPassword, err := generateSecurePassword()
+	if err != nil {
+		c.Error(err)
+		utils.InternalError(c, "Failed to generate password")
+		return
+	}
+
+	hashedPassword, err := utils.HashPassword(plainPassword)
+	if err != nil {
+		c.Error(err)
+		utils.InternalError(c, "Failed to hash password")
+		return
+	}
+
+	user.PasswordHash = hashedPassword
+	user.RequiresPasswordChange = true
+
+	if err := repository.DB.Save(&user).Error; err != nil {
+		c.Error(err)
+		utils.InternalError(c, "Failed to reset password")
+		return
+	}
+
+	// Revoke all existing sessions so the user must re-login with the new temporary password
+	if err := repository.DeleteAllUserSessions(uid); err != nil {
+		c.Error(err)
+	}
+	if err := repository.DeleteAllUserRefreshTokens(uid); err != nil {
+		c.Error(err)
+	}
+
+	utils.Success(c, gin.H{
+		"user_id":          user.ID,
+		"email":            user.Email,
+		"default_password": plainPassword, // Returned ONCE — never stored in plain text
+	})
 }

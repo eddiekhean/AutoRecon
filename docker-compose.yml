@@ -1,17 +1,20 @@
 version: '3.8'
 
 services:
-  postgres:
-    image: postgres:15-alpine
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
     container_name: autorecon-db
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: secret
-      POSTGRES_DB: autorecon
+      # SA_PASSWORD must satisfy SQL Server complexity policy:
+      #   ≥8 chars, with uppercase, lowercase, digit, and special character.
+      # Must match DB_PASSWORD in backend/.env.
+      SA_PASSWORD: "AutoRecon@Str0ng!"
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: "Developer"   # Free Developer edition; use "Standard"/"Enterprise" for prod
     ports:
-      - "5434:5432"
+      - "1433:1433"             # SQL Server default port (PostgreSQL used 5432 / mapped to 5434)
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - sqlserver_data:/var/opt/mssql
 
   redis:
     image: redis:7-alpine
@@ -22,5 +25,5 @@ services:
       - redis_data:/data
 
 volumes:
-  postgres_data:
+  sqlserver_data:
   redis_data:

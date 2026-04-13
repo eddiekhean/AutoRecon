@@ -6,12 +6,13 @@ interface BadgeProps {
 }
 
 const VARIANT_MAP: Record<string, string> = {
-  active: 'badge--active',
+  active:   'badge--active',
   inactive: 'badge--inactive',
-  ACTIVE: 'badge--active',
+  ACTIVE:   'badge--active',
   INACTIVE: 'badge--inactive',
-  ADMIN: 'badge--admin',
-  SALE: 'badge--sale',
+  ADMIN:    'badge--admin',
+  SALE:     'badge--sale',
+  VIEWER:   'badge--viewer',
 };
 
 export function Badge({ variant, children }: BadgeProps) {

@@ -6,12 +6,14 @@ export const authService = {
     const response = await api.post('/auth/login', data);
     return response.data;
   },
-  logout: async (refreshToken: string) => {
-    const response = await api.post('/auth/logout', { refresh_token: refreshToken });
+  // No body needed — the refresh token travels as an HttpOnly cookie
+  logout: async () => {
+    const response = await api.post('/auth/logout');
     return response.data;
   },
-  refresh: async (refreshToken: string) => {
-    const response = await api.post('/auth/refresh', { refresh_token: refreshToken });
+  // No body needed — the refresh token travels as an HttpOnly cookie
+  refresh: async () => {
+    const response = await api.post('/auth/refresh');
     return response.data;
   },
 };

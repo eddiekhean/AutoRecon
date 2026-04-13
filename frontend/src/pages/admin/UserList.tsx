@@ -1,12 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
-import { UserPlus, Lock, Unlock, RefreshCw } from 'lucide-react';
+import { UserPlus, Lock, Unlock, RefreshCw, Users, Pencil } from 'lucide-react';
 import { MainLayout } from '../../components/layout/MainLayout';
 import { Button } from '../../components/common/Button';
 import { Badge } from '../../components/common/Badge';
 import { SkeletonRow } from '../../components/common/Skeleton';
 import { ProvisionUserModal } from './ProvisionUserModal';
+import { UserDetailModal } from './UserDetailModal';
 import { useNotification } from '../../context/NotificationContext';
 import { adminService } from '../../services/adminService';
+import { getApiErrorMessage } from '../../utils/errors';
 import type { UserListItem } from '../../types';
 
 const ROLES = ['', 'ADMIN', 'SALE', 'VIEWER'];
@@ -19,6 +21,7 @@ export function UserList() {
   const [loading, setLoading] = useState(true);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [detailUserId, setDetailUserId] = useState<string | null>(null);
 
   const [roleFilter, setRoleFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -52,29 +55,29 @@ export function UserList() {
       );
       notify(
         'success',
-        newStatus === 'INACTIVE' ? 'Đã khoá tài khoản' : 'Đã mở khoá tài khoản',
+        newStatus === 'INACTIVE' ? 'Account Locked' : 'Account Unlocked',
         `${user.full_name} — ${newStatus}`
       );
-    } catch (err: any) {
-      notify('error', 'Thao tác thất bại', err?.response?.data?.message);
+    } catch (err) {
+      notify('error', 'Action Failed', getApiErrorMessage(err));
     } finally {
       setTogglingId(null);
     }
   };
 
   const formatDate = (iso: string) =>
-    new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short' }).format(
+    new Intl.DateTimeFormat('en-US', { dateStyle: 'short', timeStyle: 'short' }).format(
       new Date(iso)
     );
 
   return (
-    <MainLayout pageTitle="Quản lý người dùng">
+    <MainLayout pageTitle="Fleet Management">
       {/* Header */}
-      <div className="page-header">
+      <div className="page-header animate-page-enter">
         <div>
-          <h2 className="page-title">Người dùng</h2>
+          <h2 className="page-title">Users</h2>
           <p className="text-muted" style={{ marginTop: 4 }}>
-            {loading ? '...' : `${users.length} tài khoản`}
+            {loading ? '...' : `${users.length} accounts`}
           </p>
         </div>
         <Button
@@ -82,20 +85,23 @@ export function UserList() {
           leftIcon={<UserPlus size={16} />}
           onClick={() => setShowModal(true)}
         >
-          Cấp tài khoản mới
+          Provision User
         </Button>
       </div>
 
       {/* Filters */}
-      <div className="filter-bar">
+      <div
+        className="filter-bar animate-fade-in"
+        style={{ '--delay': '60ms' } as React.CSSProperties}
+      >
         <select
           id="filter-role"
           className="filter-select"
           value={roleFilter}
           onChange={(e) => setRoleFilter(e.target.value)}
-          aria-label="Lọc theo chức vụ"
+          aria-label="Filter by role"
         >
-          <option value="">Tất cả chức vụ</option>
+          <option value="">All Roles</option>
           {ROLES.filter(Boolean).map((r) => (
             <option key={r} value={r}>{r}</option>
           ))}
@@ -106,9 +112,9 @@ export function UserList() {
           className="filter-select"
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          aria-label="Lọc theo trạng thái"
+          aria-label="Filter by status"
         >
-          <option value="">Tất cả trạng thái</option>
+          <option value="">All Status</option>
           {STATUSES.filter(Boolean).map((s) => (
             <option key={s} value={s}>{s}</option>
           ))}
@@ -122,22 +128,25 @@ export function UserList() {
           onClick={fetchUsers}
           disabled={loading}
         >
-          Làm mới
+          Refresh
         </Button>
       </div>
 
       {/* Table */}
-      <div className="card" style={{ padding: 0 }}>
+      <div
+        className="card animate-fade-in"
+        style={{ padding: 0, '--delay': '120ms' } as React.CSSProperties}
+      >
         <div className="table-wrap">
           <table className="table">
             <thead>
               <tr>
-                <th>Họ và tên</th>
+                <th>Name</th>
                 <th>Email</th>
-                <th>Chức vụ</th>
-                <th>Trạng thái</th>
-                <th>Ngày tạo</th>
-                <th style={{ textAlign: 'right' }}>Hành động</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Created</th>
+                <th style={{ textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -151,21 +160,21 @@ export function UserList() {
                 </>
               ) : users.length === 0 ? (
                 <tr>
-                  <td
-                    colSpan={6}
-                    style={{
-                      textAlign: 'center',
-                      padding: '48px 16px',
-                      color: 'var(--color-text-muted)',
-                      fontSize: '0.9rem',
-                    }}
-                  >
-                    Không tìm thấy người dùng nào
+                  <td colSpan={6}>
+                    <div className="table-empty-state">
+                      <Users size={32} className="table-empty-state__icon" aria-hidden="true" />
+                      <p className="table-empty-state__text">No users found</p>
+                      <p className="table-empty-state__hint">Try adjusting filters or create a new account</p>
+                    </div>
                   </td>
                 </tr>
               ) : (
-                users.map((user) => (
-                  <tr key={user.user_id}>
+                users.map((user, i) => (
+                  <tr
+                    key={user.user_id}
+                    className="animate-row-enter"
+                    style={{ '--delay': `${Math.min(i * 40, 480)}ms` } as React.CSSProperties}
+                  >
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <div
@@ -198,29 +207,34 @@ export function UserList() {
                     </td>
                     <td>
                       <Badge variant={user.status}>
-                        {user.status === 'ACTIVE' ? '● Hoạt động' : '○ Đã khoá'}
+                        {user.status === 'ACTIVE' ? '● Active' : '○ Inactive'}
                       </Badge>
                     </td>
                     <td style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
                       {formatDate(user.created_at)}
                     </td>
                     <td style={{ textAlign: 'right' }}>
-                      <Button
-                        id={`btn-toggle-${user.user_id}`}
-                        variant={user.status === 'ACTIVE' ? 'danger' : 'success'}
-                        size="sm"
-                        loading={togglingId === user.user_id}
-                        leftIcon={
-                          user.status === 'ACTIVE' ? (
-                            <Lock size={13} />
-                          ) : (
-                            <Unlock size={13} />
-                          )
-                        }
-                        onClick={() => handleToggleStatus(user)}
-                      >
-                        {user.status === 'ACTIVE' ? 'Khoá' : 'Mở khoá'}
-                      </Button>
+                      <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                        <Button
+                          id={`btn-edit-${user.user_id}`}
+                          variant="ghost"
+                          size="sm"
+                          leftIcon={<Pencil size={13} />}
+                          onClick={() => setDetailUserId(user.user_id)}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          id={`btn-toggle-${user.user_id}`}
+                          variant={user.status === 'ACTIVE' ? 'danger' : 'success'}
+                          size="sm"
+                          loading={togglingId === user.user_id}
+                          leftIcon={user.status === 'ACTIVE' ? <Lock size={13} /> : <Unlock size={13} />}
+                          onClick={() => handleToggleStatus(user)}
+                        >
+                          {user.status === 'ACTIVE' ? 'Lock' : 'Unlock'}
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -230,10 +244,17 @@ export function UserList() {
         </div>
       </div>
 
-      {/* Modal */}
+      {/* Modals */}
       {showModal && (
         <ProvisionUserModal
           onClose={() => setShowModal(false)}
+          onSuccess={fetchUsers}
+        />
+      )}
+      {detailUserId && (
+        <UserDetailModal
+          userId={detailUserId}
+          onClose={() => setDetailUserId(null)}
           onSuccess={fetchUsers}
         />
       )}

@@ -6,13 +6,16 @@ import {
   useCallback,
   type ReactNode,
 } from 'react';
+import axios from 'axios';
 import { authService } from '../services/authService';
 import { userService } from '../services/userService';
+import { setAccessToken, clearAccessToken, API_BASE_URL } from '../services/api';
 import type { User, AuthState } from '../types';
 import type { LoginFormData } from '../utils/schemas';
 
 interface AuthContextValue extends AuthState {
-  login: (data: LoginFormData) => Promise<void>;
+  /** Returns true when the server requires a password change before any other action. */
+  login: (data: LoginFormData) => Promise<boolean>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -22,32 +25,51 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({
     user: null,
-    accessToken: localStorage.getItem('access_token'),
-    refreshToken: localStorage.getItem('refresh_token'),
     isAuthenticated: false,
     isLoading: true,
     requiresPasswordChange: false,
   });
 
-  // Load user profile on startup to prevent login-page flash
+  // Bootstrap: attempt to exchange the HttpOnly refresh cookie for a fresh access token.
+  // Raw axios is used intentionally — the api instance interceptors must not fire
+  // during initialisation before a token exists.
   useEffect(() => {
     const bootstrap = async () => {
-      const token = localStorage.getItem('access_token');
-      if (!token) {
-        setState((s) => ({ ...s, isLoading: false }));
-        return;
-      }
       try {
-        const res = await userService.getMe();
-        setState((s) => ({
-          ...s,
-          user: res.data as User,
-          isAuthenticated: true,
-          isLoading: false,
-        }));
+        const { data } = await axios.post(
+          `${API_BASE_URL}/auth/refresh`,
+          null,
+          { withCredentials: true }
+        );
+        const { access_token } = data.data;
+        setAccessToken(access_token);
+
+        try {
+          const profileRes = await userService.getMe();
+          setState({
+            user: profileRes.data as User,
+            isAuthenticated: true,
+            isLoading: false,
+            requiresPasswordChange: false,
+          });
+        } catch (profileErr: unknown) {
+          // A 403 means the account is valid but requires a password change before
+          // any profile data is accessible. Treat as authenticated-but-locked, NOT
+          // as an auth failure — clearing the token here would log the user out on
+          // every page refresh while on /change-password.
+          if ((profileErr as any)?.response?.status === 403) {
+            setState({
+              user: null,
+              isAuthenticated: true,
+              isLoading: false,
+              requiresPasswordChange: true,
+            });
+          } else {
+            throw profileErr;
+          }
+        }
       } catch {
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
+        clearAccessToken();
         setState((s) => ({ ...s, isLoading: false }));
       }
     };
@@ -55,15 +77,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     bootstrap();
   }, []);
 
-  // Listen for forced logout events from the axios interceptor
+  // Listen for forced logout events dispatched by the axios interceptor.
   useEffect(() => {
     const handleForceLogout = () => {
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('refresh_token');
+      clearAccessToken();
       setState({
         user: null,
-        accessToken: null,
-        refreshToken: null,
         isAuthenticated: false,
         isLoading: false,
         requiresPasswordChange: false,
@@ -73,39 +92,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('auth:logout', handleForceLogout);
   }, []);
 
-  const login = useCallback(async (data: LoginFormData) => {
+  /**
+   * Authenticates the user. Returns `true` when `requires_password_change` is set
+   * so the caller can navigate directly to /change-password without a redirect round-trip.
+   *
+   * Security note: when `requires_password_change` is true the backend blocks every
+   * route except PUT /users/me/password (returns 403). We therefore skip the profile
+   * fetch in that case to avoid an unnecessary 403 round-trip.
+   */
+  const login = useCallback(async (data: LoginFormData): Promise<boolean> => {
     const res = await authService.login(data);
-    const { access_token, refresh_token, requires_password_change } = res.data;
+    const { access_token, requires_password_change } = res.data;
 
-    localStorage.setItem('access_token', access_token);
-    if (refresh_token) localStorage.setItem('refresh_token', refresh_token);
+    setAccessToken(access_token);
 
-    // Fetch profile immediately after login
+    if (requires_password_change) {
+      // Do NOT call /users/me — it is blocked with 403 until the password is changed.
+      setState({
+        user: null,
+        isAuthenticated: true,
+        isLoading: false,
+        requiresPasswordChange: true,
+      });
+      return true;
+    }
+
     const profileRes = await userService.getMe();
-
     setState({
       user: profileRes.data as User,
-      accessToken: access_token,
-      refreshToken: refresh_token ?? null,
       isAuthenticated: true,
       isLoading: false,
-      requiresPasswordChange: requires_password_change ?? false,
+      requiresPasswordChange: false,
     });
+    return false;
   }, []);
 
   const logout = useCallback(async () => {
-    const refreshToken = localStorage.getItem('refresh_token');
     try {
-      if (refreshToken) await authService.logout(refreshToken);
+      await authService.logout();
     } catch {
       // Swallow errors — we log out locally regardless
     } finally {
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('refresh_token');
+      clearAccessToken();
       setState({
         user: null,
-        accessToken: null,
-        refreshToken: null,
         isAuthenticated: false,
         isLoading: false,
         requiresPasswordChange: false,
